@@ -5,17 +5,21 @@ import (
 	"strings"
 )
 
-type Cond map[string]any
+type Cond []string
 
-type RaWhereCondition string
+type EqsClause struct {
+	Op    Operator
+	Field Cond
+}
 
-func Eq(op string, value Cond) string {
+type Operator string
+
+func Eqs(value EqsClause) string {
 
 	var where []string
-	for k, v := range value {
-
-		where = append(where, fmt.Sprintf(`<<table>>"%s" = %v`, k, v))
+	for _, v := range value.Field {
+		where = append(where, fmt.Sprintf(`<<table>>"%s" = ?`, v))
 	}
-	return strings.Join(where, " AND ")
 
+	return strings.Join(where, string(value.Op))
 }

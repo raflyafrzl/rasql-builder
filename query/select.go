@@ -1,12 +1,14 @@
 package query
 
 import (
+	"fmt"
 	"github.com/raflyafrzl/rasql/schema"
 	"strings"
 )
 
 type SelectQueryBuilder struct {
-	column    string
+	rawColumn []string
+	columns   string
 	where     string
 	tableName string
 	result    string
@@ -14,17 +16,16 @@ type SelectQueryBuilder struct {
 }
 
 func Select(column ...string) *SelectQueryBuilder {
-	resultEval := evalValue(column...)
-	q := SelectQueryBuilder{column: strings.Join(resultEval, ",")}
-	q.stmt = "SELECT "
+	q := SelectQueryBuilder{rawColumn: column}
 	return &q
 }
 
-func evalValue(value ...string) []string {
+func (s *SelectQueryBuilder) evalValue(value ...string) []string {
 
 	var result []string
 	for _, v := range value {
-		result = append(result, `"`+v+`"`)
+		c := fmt.Sprintf(`%s."%s"`, s.tableName, v)
+		result = append(result, c)
 	}
 	return result
 
@@ -32,22 +33,24 @@ func evalValue(value ...string) []string {
 
 func (q *SelectQueryBuilder) From(schema *schema.Schema) *SelectQueryBuilder {
 	q.tableName = schema.GetTableName()
+
+	q.columns = strings.Join(q.evalValue(q.rawColumn...), ", ")
+
 	return q
 }
 
 func (q *SelectQueryBuilder) Where(cond ...string) *SelectQueryBuilder {
-
 	for _, v := range cond {
 		q.where += strings.Replace(v, "<<table>>", q.tableName+".", -1)
 	}
 	return q
 }
 
-func (q *SelectQueryBuilder) Result() string {
+func (q *SelectQueryBuilder) Construct() string {
 
-	q.result = q.stmt + q.column + " " + q.tableName
+	q.result = fmt.Sprintf("SELECT %s FROM %s", q.columns, q.tableName)
 	if q.where != "" {
-		q.result += " WHERE " + q.where
+		q.result = q.result + fmt.Sprintf(" WHERE %s", q.where)
 	}
 	return q.result
 }
